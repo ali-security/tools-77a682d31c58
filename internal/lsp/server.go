@@ -51,7 +51,7 @@ func RunServerOnPort(ctx context.Context, port int, opts ...interface{}) error {
 // RunServerOnPort starts an LSP server on the given port and does not exit.
 // This function exists for debugging purposes.
 func RunServerOnAddress(ctx context.Context, addr string, opts ...interface{}) error {
-	ln, err := net.Listen("tcp", addr)
+	ln, err := listen(addr)
 	if err != nil {
 		return err
 	}
@@ -63,6 +63,18 @@ func RunServerOnAddress(ctx context.Context, addr string, opts ...interface{}) e
 		stream := jsonrpc2.NewHeaderStream(conn, conn)
 		go RunServer(ctx, stream, opts...)
 	}
+}
+
+// listen opens a TCP listener on addr. An address with no host, such as
+// ":8080", is bound to localhost rather than to all network interfaces, so
+// that the debugging server is not reachable from other machines
+// (CVE-2026-42503). Pass an explicit host such as 0.0.0.0 to listen on all
+// interfaces.
+func listen(addr string) (net.Listener, error) {
+	if strings.HasPrefix(addr, ":") {
+		addr = "localhost" + addr
+	}
+	return net.Listen("tcp", addr)
 }
 
 type server struct {
